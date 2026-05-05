@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+dry_run=false
+if [[ "${1:-}" == "--dry-run" ]]; then
+  dry_run=true
+  shift
+fi
+
+part="${1:-patch}"
+
+if [[ $# -gt 1 || ! "$part" =~ ^(minor|patch)$ ]]; then
+  echo "usage: bin/bump-version [--dry-run] [minor|patch]" >&2
+  exit 64
+fi
+
+current="$(
+  sed -nE 's/^[[:space:]]*@version[[:space:]]+"([0-9]+)\.([0-9]+)\.([0-9]+)".*/\1.\2.\3/p' mix.exs
+)"
+
+if [[ -z "$current" ]]; then
+  echo "could not find @version in mix.exs" >&2
+  exit 1
+fi
+
+IFS=. read -r major minor patch <<<"$current"
+
+case "$part" in
+  minor)
+    minor=$((minor + 1))
+    patch=0
+    ;;
+  patch)
+    patch=$((patch + 1))
+    ;;
+esac
+
+next="$major.$minor.$patch"
+
+if [[ "$dry_run" == true ]]; then
+  echo "$current -> $next"
+  exit 0
+fi
+
+perl -0pi -e 's/@version\s+"[0-9]+\.[0-9]+\.[0-9]+"/@version "'"$next"'"/' mix.exs
+echo "$current -> $next"

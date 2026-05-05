@@ -24,6 +24,11 @@ When the upstream Python project moves to a new major or minor version:
    appropriate Elixir patch version.
 4. Update docs and run the verification commands below.
 
+Use `bin/bump-version [minor|patch]` for version changes. The default bump is
+`patch`. Use `bin/release` after committing release changes to create the
+annotated `vX.Y.Z` git tag from the `@version` value in `mix.exs`. Both scripts
+support `--dry-run`.
+
 ## Verification
 
 Run from this directory:

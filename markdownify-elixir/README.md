@@ -35,6 +35,17 @@ line. When the Python project moves to a new major or minor version, update this
 package to the matching major/minor version after porting and verifying parity
 against the retained Python tests.
 
+Use the helper scripts to manage package versions and release tags:
+
+```sh
+bin/bump-version          # bumps patch, e.g. 1.2.0 -> 1.2.1
+bin/bump-version patch    # same as default
+bin/bump-version minor    # bumps minor and resets patch, e.g. 1.2.0 -> 1.3.0
+bin/release               # creates an annotated git tag like v1.2.0 from mix.exs
+```
+
+Both scripts support `--dry-run`.
+
 ## Usage
 
 Convert HTML to Markdown:
