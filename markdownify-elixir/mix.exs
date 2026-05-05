@@ -37,7 +37,7 @@ defmodule MarkdownifyEx.MixProject do
     [
       name: "markdownify_ex",
       licenses: ["MIT"],
-      files: ["lib", "bin", "mix.exs", "README.md", "LICENSE"],
+      files: ["lib", "mix.exs", "README.md", "LICENSE"],
       links: %{"GitHub" => "https://github.com/HashNuke/markdownify-elixir"}
     ]
   end
