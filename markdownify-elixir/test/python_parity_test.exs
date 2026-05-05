@@ -1,4 +1,4 @@
-defmodule MarkdownifyEx.PythonParityTest do
+defmodule Markdownify.PythonParityTest do
   use ExUnit.Case, async: true
 
   @script Path.expand("support/collect_python_asserts.py", __DIR__)
@@ -23,7 +23,7 @@ defmodule MarkdownifyEx.PythonParityTest do
       |> Enum.map(fn {key, value} -> {String.to_atom(key), atomize_option(value)} end)
       |> maybe_disable_document_strip(case)
 
-    actual = MarkdownifyEx.markdownify(case["html"], options)
+    actual = Markdownify.markdownify(case["html"], options)
 
     if actual == case["expected"] do
       :ok

@@ -1,6 +1,77 @@
-defmodule MarkdownifyEx do
+defmodule Markdownify do
   @moduledoc """
   Converts HTML fragments to Markdown.
+
+  `Markdownify` is an Elixir port of Python `markdownify`. It accepts an HTML
+  fragment, parses it with Floki, and emits Markdown that tracks the upstream
+  Python project's conversion behavior.
+
+  ## Basic usage
+
+      iex> Markdownify.markdownify(~s(<b>Yay</b> <a href="http://github.com">GitHub</a>))
+      "**Yay** [GitHub](http://github.com)"
+
+      iex> Markdownify.markdownify("<h1>Hello</h1>", heading_style: :atx)
+      "# Hello"
+
+  ## Filtering tags
+
+  Use `:strip` to remove Markdown conversion for specific tags while keeping
+  their contents:
+
+      iex> Markdownify.markdownify(~s(<b>Yay</b> <a href="/">Home</a>), strip: ["a"])
+      "**Yay** Home"
+
+  Use `:convert` to allow only specific tags:
+
+      iex> Markdownify.markdownify(~s(<b>Yay</b> <a href="/">Home</a>), convert: ["b"])
+      "**Yay** Home"
+
+  `:strip` and `:convert` are mutually exclusive.
+
+  ## Custom conversion
+
+  Pass `converter: MyModule` to override tag conversion with a module that
+  implements `Markdownify.Converter`.
+
+      defmodule ImageBlockConverter do
+        @behaviour Markdownify.Converter
+
+        @impl true
+        def convert("img", _node, _text, _context, default) do
+          default.() <> "\\n\\n"
+        end
+
+        def convert(_tag, _node, _text, _context, _default), do: :default
+      end
+
+      Markdownify.markdownify(
+        ~s(<img src="/img.jpg" alt="Image" />text),
+        converter: ImageBlockConverter
+      )
+
+  ## Options
+
+  The supported options mirror the Python project where practical:
+
+  * `:strip` - tags to skip converting.
+  * `:convert` - tags to convert, skipping all others.
+  * `:converter` - module implementing `Markdownify.Converter`.
+  * `:autolinks` - emit `<url>` links when link text matches `href`.
+  * `:default_title` - use `href` as link title when no title exists.
+  * `:heading_style` - `:underlined`, `:atx`, or `:atx_closed`.
+  * `:bullets` - unordered list bullet cycle, default `"*+-"`.
+  * `:strong_em_symbol` - `"*"` or `"_"`.
+  * `:sub_symbol` and `:sup_symbol` - wrappers for subscript/superscript text.
+  * `:newline_style` - `:spaces` or `:backslash` for `<br>`.
+  * `:code_language` - language marker for fenced `<pre>` blocks.
+  * `:code_language_callback` - function that receives a Floki node and returns a language.
+  * `:escape_asterisks`, `:escape_underscores`, `:escape_misc` - escaping controls.
+  * `:keep_inline_images_in` - tags where inline images should remain Markdown images.
+  * `:table_infer_header` - use first body row as table header when no header exists.
+  * `:wrap` and `:wrap_width` - paragraph wrapping controls.
+  * `:strip_document` - `:lstrip`, `:rstrip`, `:strip`, or `nil`.
+  * `:strip_pre` - `:strip`, `:strip_one`, or `nil`.
   """
 
   @atx :atx
@@ -16,21 +87,83 @@ defmodule MarkdownifyEx do
   @strip_one :strip_one
   @space_sentinel "\uE000"
 
+  @option_keys %{
+    "autolinks" => :autolinks,
+    "bs4_options" => :bs4_options,
+    "bullets" => :bullets,
+    "code_language" => :code_language,
+    "code_language_callback" => :code_language_callback,
+    "convert" => :convert,
+    "converter" => :converter,
+    "default_title" => :default_title,
+    "escape_asterisks" => :escape_asterisks,
+    "escape_misc" => :escape_misc,
+    "escape_underscores" => :escape_underscores,
+    "heading_style" => :heading_style,
+    "keep_inline_images_in" => :keep_inline_images_in,
+    "newline_style" => :newline_style,
+    "strip" => :strip,
+    "strip_document" => :strip_document,
+    "strip_pre" => :strip_pre,
+    "strong_em_symbol" => :strong_em_symbol,
+    "sub_symbol" => :sub_symbol,
+    "sup_symbol" => :sup_symbol,
+    "table_infer_header" => :table_infer_header,
+    "wrap" => :wrap,
+    "wrap_width" => :wrap_width
+  }
+
+  @style_values %{
+    "atx" => @atx,
+    "atx_closed" => @atx_closed,
+    "backslash" => @backslash,
+    "lstrip" => @lstrip,
+    "rstrip" => @rstrip,
+    "spaces" => @spaces,
+    "strip" => @strip,
+    "strip_one" => @strip_one,
+    "underlined" => @underlined
+  }
+
+  @doc "Heading style that renders headings as `# Heading`."
   def atx, do: @atx
+
+  @doc "Heading style that renders headings as `# Heading #`."
   def atx_closed, do: @atx_closed
+
+  @doc "Heading style that renders h1/h2 with Setext underlines."
   def underlined, do: @underlined
+
+  @doc "Alias for `underlined/0`."
   def setext, do: @underlined
+
+  @doc "Line break style that renders `<br>` as two spaces plus a newline."
   def spaces, do: @spaces
+
+  @doc "Line break style that renders `<br>` as a backslash plus a newline."
   def backslash, do: @backslash
+
+  @doc "Strong/emphasis marker using `*`."
   def asterisk, do: @asterisk
+
+  @doc "Strong/emphasis marker using `_`."
   def underscore, do: @underscore
+
+  @doc "Document/pre strip style that removes leading newlines."
   def lstrip, do: @lstrip
+
+  @doc "Document/pre strip style that removes trailing newlines."
   def rstrip, do: @rstrip
+
+  @doc "Document/pre strip style that removes leading and trailing newlines."
   def strip, do: @strip
+
+  @doc "Preformatted strip style that removes one leading and trailing newline."
   def strip_one, do: @strip_one
 
   @defaults %{
     autolinks: true,
+    bs4_options: nil,
     bullets: "*+-",
     code_language: "",
     code_language_callback: nil,
@@ -56,6 +189,7 @@ defmodule MarkdownifyEx do
 
   @type option ::
           {:autolinks, boolean()}
+          | {:bs4_options, term()}
           | {:bullets, String.t() | [String.t()]}
           | {:code_language, String.t()}
           | {:code_language_callback, (html_node() -> String.t() | nil)}
@@ -82,6 +216,23 @@ defmodule MarkdownifyEx do
 
   @doc """
   Converts an HTML string to Markdown.
+
+  `options` may be a keyword list or map. The default conversion strips leading
+  and trailing document-separation newlines, matching Python `markdownify`.
+
+  ## Examples
+
+      iex> Markdownify.markdownify("<strong>Hello</strong>")
+      "**Hello**"
+
+      iex> Markdownify.markdownify(~s(<a href="https://example.com">Example</a>))
+      "[Example](https://example.com)"
+
+      iex> Markdownify.markdownify("<h1>Hello</h1>", heading_style: :atx)
+      "# Hello"
+
+      iex> Markdownify.markdownify("<p>Hello</p>", strip_document: nil)
+      "\\n\\nHello\\n\\n"
   """
   @spec markdownify(String.t(), [option()] | map()) :: String.t()
   def markdownify(html, options \\ []) when is_binary(html) do
@@ -130,6 +281,11 @@ defmodule MarkdownifyEx do
 
   @doc """
   Alias for `markdownify/2`.
+
+  ## Example
+
+      iex> Markdownify.convert("<em>Hello</em>")
+      "*Hello*"
   """
   @spec convert(String.t(), [option()] | map()) :: String.t()
   def convert(html, options \\ []), do: markdownify(html, options)
@@ -175,7 +331,12 @@ defmodule MarkdownifyEx do
   defp normalize_key(key) when is_atom(key), do: key
 
   defp normalize_key(key) when is_binary(key) do
-    key |> String.trim_leading(":") |> String.to_atom()
+    normalized = String.trim_leading(key, ":")
+
+    case Map.fetch(@option_keys, normalized) do
+      {:ok, option_key} -> option_key
+      :error -> raise ArgumentError, "Unknown Markdownify option: #{inspect(key)}"
+    end
   end
 
   defp normalize_value(_key, value), do: value
@@ -186,8 +347,14 @@ defmodule MarkdownifyEx do
   defp normalize_style(nil), do: nil
   defp normalize_style(value) when is_atom(value), do: value
 
-  defp normalize_style(value) when is_binary(value),
-    do: value |> String.downcase() |> String.to_atom()
+  defp normalize_style(value) when is_binary(value) do
+    normalized = String.downcase(value)
+
+    case Map.fetch(@style_values, normalized) do
+      {:ok, style} -> style
+      :error -> raise ArgumentError, "Unknown Markdownify style value: #{inspect(value)}"
+    end
+  end
 
   defp process_element(text, ctx) when is_binary(text), do: process_text(text, ctx)
   defp process_element({_tag, _attrs, _children} = node, ctx), do: process_tag(node, ctx)

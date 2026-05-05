@@ -1,8 +1,8 @@
-defmodule MarkdownifyEx.CustomConverterTest do
+defmodule Markdownify.CustomConverterTest do
   use ExUnit.Case, async: true
 
   defmodule UnitTestConverter do
-    @behaviour MarkdownifyEx.Converter
+    @behaviour Markdownify.Converter
 
     @impl true
     def convert("img", _node, _text, _context, default) do
@@ -25,7 +25,7 @@ defmodule MarkdownifyEx.CustomConverterTest do
   end
 
   defp md(html, opts \\ []) do
-    MarkdownifyEx.markdownify(
+    Markdownify.markdownify(
       html,
       Keyword.merge([strip_document: nil, converter: UnitTestConverter], opts)
     )

@@ -1,7 +1,7 @@
-defmodule MarkdownifyExTest do
+defmodule MarkdownifyTest do
   use ExUnit.Case, async: true
 
-  alias MarkdownifyEx, as: M
+  alias Markdownify, as: M
 
   defp md(html, opts \\ []) do
     M.markdownify(html, Keyword.merge([strip_document: nil], opts))
@@ -73,6 +73,19 @@ defmodule MarkdownifyExTest do
 
     assert M.markdownify("<p>Hello</p>") == "Hello"
     assert M.markdownify("<p>Hello</p>", strip_document: nil) == "\n\nHello\n\n"
+  end
+
+  test "string option keys and style values are normalized without creating atoms" do
+    assert M.markdownify("<h1>Hello</h1>", %{"heading_style" => "atx"}) == "# Hello"
+    assert M.markdownify("a<br>b", %{":newline_style" => "backslash"}) == "a\\\nb"
+
+    assert_raise ArgumentError, ~r/Unknown Markdownify option/, fn ->
+      M.markdownify("<p>Hello</p>", %{"not_an_option" => true})
+    end
+
+    assert_raise ArgumentError, ~r/Unknown Markdownify style value/, fn ->
+      M.markdownify("<h1>Hello</h1>", %{"heading_style" => "made_up"})
+    end
   end
 
   test "lists mirror python expectations" do

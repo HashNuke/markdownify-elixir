@@ -1,6 +1,6 @@
-# MarkdownifyEx
+# Markdownify
 
-MarkdownifyEx converts HTML fragments to Markdown. This repository keeps the
+Markdownify converts HTML fragments to Markdown. This repository keeps the
 upstream Python `markdownify/` package and `tests/` tree in place so changes can
 continue to be tracked against the parent project, while the Elixir library
 lives under `lib/` and `test/`.
@@ -12,7 +12,7 @@ Add `markdownify_ex` to your dependencies:
 ```elixir
 def deps do
   [
-    {:markdownify_ex, "~> 0.1.0"}
+    {:markdownify_ex, "~> 1.2"}
   ]
 end
 ```
@@ -24,19 +24,30 @@ mix deps.get
 mix test
 ```
 
+## Versioning
+
+Markdownify keeps its major and minor version aligned with the upstream
+Python `markdownify` project. For example, this Elixir package starts on the
+`1.2.x` line because the retained Python project is currently `1.2.2`.
+
+The patch version is reserved for Elixir-specific releases on that upstream
+line. When the Python project moves to a new major or minor version, update this
+package to the matching major/minor version after porting and verifying parity
+against the retained Python tests.
+
 ## Usage
 
 Convert HTML to Markdown:
 
 ```elixir
-MarkdownifyEx.markdownify(~s(<b>Yay</b> <a href="http://github.com">GitHub</a>))
+Markdownify.markdownify(~s(<b>Yay</b> <a href="http://github.com">GitHub</a>))
 #=> "**Yay** [GitHub](http://github.com)"
 ```
 
 Specify tags to strip:
 
 ```elixir
-MarkdownifyEx.markdownify(
+Markdownify.markdownify(
   ~s(<b>Yay</b> <a href="http://github.com">GitHub</a>),
   strip: ["a"]
 )
@@ -46,21 +57,21 @@ MarkdownifyEx.markdownify(
 Or specify only the tags to convert:
 
 ```elixir
-MarkdownifyEx.markdownify(
+Markdownify.markdownify(
   ~s(<b>Yay</b> <a href="http://github.com">GitHub</a>),
   convert: ["b"]
 )
 #=> "**Yay** GitHub"
 ```
 
-`MarkdownifyEx.convert/2` is an alias for `MarkdownifyEx.markdownify/2`.
+`Markdownify.convert/2` is an alias for `Markdownify.markdownify/2`.
 
 ## Options
 
 Options are passed as a keyword list or map:
 
 ```elixir
-MarkdownifyEx.markdownify("<h1>Hello</h1>", heading_style: :atx)
+Markdownify.markdownify("<h1>Hello</h1>", heading_style: :atx)
 #=> "# Hello"
 ```
 
@@ -77,7 +88,7 @@ Supported options:
 - `:newline_style` - `:spaces` or `:backslash` for `<br>` output.
 - `:code_language` - language label for all fenced `<pre>` blocks.
 - `:code_language_callback` - one-arity function that can derive a language from a Floki node.
-- `:converter` - module implementing `MarkdownifyEx.Converter` for custom tag conversion.
+- `:converter` - module implementing `Markdownify.Converter` for custom tag conversion.
 - `:escape_asterisks`, `:escape_underscores`, and `:escape_misc` - Markdown escaping controls.
 - `:keep_inline_images_in` - parent tags where inline images remain Markdown images.
 - `:table_infer_header` - infer the first table row as the header when no header exists.
@@ -88,11 +99,11 @@ Supported options:
 ## Custom Converters
 
 Python `markdownify` customizes conversion by subclassing `MarkdownConverter`.
-In Elixir, pass a module that implements `MarkdownifyEx.Converter`:
+In Elixir, pass a module that implements `Markdownify.Converter`:
 
 ```elixir
 defmodule ImageBlockConverter do
-  @behaviour MarkdownifyEx.Converter
+  @behaviour Markdownify.Converter
 
   @impl true
   def convert("img", _node, _text, _context, default) do
@@ -102,7 +113,7 @@ defmodule ImageBlockConverter do
   def convert(_tag, _node, _text, _context, _default), do: :default
 end
 
-MarkdownifyEx.markdownify(
+Markdownify.markdownify(
   ~s(<img src="/path/to/img.jpg" alt="Alt text" />text),
   converter: ImageBlockConverter
 )
@@ -125,5 +136,5 @@ The Python source and tests are intentionally retained:
 - `shell.nix`
 
 The Elixir parity test reads the retained Python test files and runs extracted
-Python expectations against `MarkdownifyEx`, so upstream behavior changes can be
+Python expectations against `Markdownify`, so upstream behavior changes can be
 tracked from the original test corpus.
